@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>霍蘭德職業興趣測驗 (RIASEC)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body {
+            font-family: 'Inter', 'PingFang TC', 'Heiti TC', '微軟正黑體', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .fade-in {
+            animation: fadeIn 0.4s ease-in-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .option-btn {
+            transition: all 0.2s ease;
+        }
+        .option-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div id="app" class="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden relative min-h-[400px]">
+        
+        <!-- 首頁畫面 -->
+        <div id="home-screen" class="p-8 md:p-12 text-center fade-in">
+            <div class="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                </svg>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-4">霍蘭德職業興趣測驗</h1>
+            <p class="text-gray-600 mb-8 leading-relaxed">
+                發掘你的天賦與熱情！本測驗包含 18 個簡單的情境題，根據你的直覺作答，幫助你找出最適合的 RIASEC 職業代碼（如 IRE, CRA）。
+            </p>
+            <button onclick="startQuiz()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-full transition-colors duration-300 w-full md:w-auto shadow-md">
+                開始測驗
+            </button>
+        </div>
+
+        <!-- 測驗畫面 -->
+        <div id="quiz-screen" class="hidden p-6 md:p-10 flex flex-col h-full fade-in">
+            <!-- 進度條 -->
+            <div class="mb-8">
+                <div class="flex justify-between text-sm text-gray-500 mb-2">
+                    <span id="progress-text">第 1 / 18 題</span>
+                    <span id="progress-percentage">0%</span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2.5">
+                    <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- 題目區 -->
+            <div class="flex-grow flex flex-col justify-center mb-8">
+                <h2 id="question-text" class="text-2xl font-semibold text-gray-800 text-center mb-10 leading-snug">
+                    題目載入中...
+                </h2>
+
+                <!-- 評分按鈕 (1-5) -->
+                <div class="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                    <button onclick="answer(1)" class="option-btn py-4 rounded-xl border-2 border-red-100 bg-red-50 text-red-700 font-medium hover:border-red-400">1 - 非常不喜歡</button>
+                    <button onclick="answer(2)" class="option-btn py-4 rounded-xl border-2 border-orange-100 bg-orange-50 text-orange-700 font-medium hover:border-orange-400">2 - 不太喜歡</button>
+                    <button onclick="answer(3)" class="option-btn py-4 rounded-xl border-2 border-gray-100 bg-gray-50 text-gray-700 font-medium hover:border-gray-400">3 - 普通</button>
+                    <button onclick="answer(4)" class="option-btn py-4 rounded-xl border-2 border-green-100 bg-green-50 text-green-700 font-medium hover:border-green-400">4 - 滿喜歡的</button>
+                    <button onclick="answer(5)" class="option-btn py-4 rounded-xl border-2 border-blue-100 bg-blue-50 text-blue-700 font-medium hover:border-blue-400">5 - 非常喜歡</button>
+                </div>
+
+                <!-- 上一題按鈕 -->
+                <div class="mt-6 text-center">
+                    <button onclick="previousQuestion()" id="prev-btn" class="hidden text-gray-500 hover:text-gray-800 font-medium transition-colors flex items-center justify-center mx-auto gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                        返回上一題
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 結果畫面 -->
+        <div id="result-screen" class="hidden p-6 md:p-10 fade-in h-[85vh] overflow-y-auto">
+            
+            <!-- 加上匯出區域的外框 -->
+            <div id="export-area" class="bg-white p-4 sm:p-6 rounded-2xl">
+                <div class="text-center mb-8">
+                    <h2 class="text-xl text-gray-500 font-medium mb-2">你的專屬霍蘭德代碼是</h2>
+                    <div id="result-code" class="text-5xl font-bold text-blue-600 tracking-widest mb-4">---</div>
+                    <p class="text-gray-600" id="result-subtitle">分析完成！以下是你的潛力報告</p>
+                </div>
+
+                <!-- 雷達圖容器 -->
+                <div class="w-full max-w-md mx-auto mb-10 relative bg-white">
+                    <canvas id="radarChart"></canvas>
+                </div>
+
+                <!-- 解析區塊 -->
+                <div class="space-y-6">
+                    <h3 class="text-xl font-bold text-gray-800 border-b pb-2">你的核心優勢解析</h3>
+                    <div id="analysis-container" class="space-y-4">
+                        <!-- 解析內容將透過 JS 動態產生 -->
+                    </div>
+                </div>
+
+                <!-- 推薦科系區塊 -->
+                <div class="space-y-6 mt-8">
+                    <h3 class="text-xl font-bold text-gray-800 border-b pb-2 flex items-center gap-2">
+                        <span>🎓</span> 推薦大學科系群
+                    </h3>
+                    <div id="majors-container" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <!-- 推薦科系將透過 JS 動態產生 -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-10 flex flex-col sm:flex-row gap-4 justify-center text-center">
+                <button onclick="downloadResult()" id="download-btn" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-8 rounded-full transition-colors duration-300 w-full sm:w-auto shadow-md flex justify-center items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    儲存結果圖片
+                </button>
+                <button onclick="resetQuiz()" class="bg-gray-800 hover:bg-gray-900 text-white font-semibold py-3 px-8 rounded-full transition-colors duration-300 w-full sm:w-auto shadow-md">
+                    重新測驗
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // 霍蘭德特質定義與解析
+        const traitsInfo = {
+            'R': { name: '實用型 (Realistic)', color: 'rgba(239, 68, 68, 1)', desc: '你務實、偏好具體操作，喜歡動手做、操作機械或在戶外工作。比起紙上談兵，你更看重實際產出的成果。' },
+            'I': { name: '研究型 (Investigative)', color: 'rgba(59, 130, 246, 1)', desc: '你充滿好奇心、邏輯嚴密，擅長分析問題與探究背後原理。你喜歡與數據、理論為伍，並透過研究來解決複雜問題。' },
+            'A': { name: '藝術型 (Artistic)', color: 'rgba(168, 85, 247, 1)', desc: '你富有想像力、直覺力強，重視美感與自我表達。你不喜歡死板的規則，喜歡在自由的環境中發揮創意與設計感。' },
+            'S': { name: '社交型 (Social)', color: 'rgba(234, 179, 8, 1)', desc: '你具備同理心、友善且樂於助人。你喜歡在團隊中合作，擅長傾聽、教導他人，在需要高度人際互動的環境中表現最出色。' },
+            'E': { name: '企業型 (Enterprising)', color: 'rgba(249, 115, 22, 1)', desc: '你充滿自信、具備野心與說服力。你喜歡設立目標、領導團隊、影響他人，並在充滿競爭與商業挑戰的環境中獲得成就感。' },
+            'C': { name: '事務型 (Conventional)', color: 'rgba(16, 185, 129, 1)', desc: '你做事有條理、注重細節與精確度。你喜歡遵循明確的規範和流程，擅長處理數字、報表與組織管理，是維持系統運作的可靠力量。' }
+        };
+
+        // 科系推薦資料庫
+        const majorsInfo = {
+            'R': ['機械工程', '電機工程', '土木工程', '環境工程', '體育學系', '工業設計', '航空工程', '物理治療'],
+            'I': ['資訊工程', '醫學系', '物理系', '化學系', '生命科學', '心理學系', '資料科學', '材料工程'],
+            'A': ['美術設計', '視覺傳達', '大眾傳播', '外語學系', '建築設計', '表演藝術', '服裝設計', '多媒體動畫'],
+            'S': ['教育學系', '護理系', '社會/社工系', '諮商輔導', '特殊教育', '幼兒教育', '職能治療', '人力資源'],
+            'E': ['企業管理', '財務金融', '國際企業', '行銷/公關', '法律系', '政治學系', '休閒管理', '餐飲管理'],
+            'C': ['會計系', '統計系', '資訊管理', '公共行政', '經濟學系', '圖書資訊', '財務工程', '物流管理']
+        };
+
+        // 題目資料庫 (36題，打亂順序以求客觀)
+        const questions = [
+            // R: 實用型
+            { text: "親自動手做勞作、組裝模型或修理壞掉的東西。", type: "R" },
+            { text: "在戶外進行體育活動或接觸大自然。", type: "R" },
+            { text: "學習操作各種機器、相機或數位工具。", type: "R" },
+            { text: "喜歡上生活科技課、木工、金工或機器人組裝。", type: "R" },
+            { text: "幫忙家裡修理電器、組裝家具或保養腳踏車。", type: "R" },
+            { text: "偏好動手做實驗或實際操作，而不是只聽老師講解理論。", type: "R" },
+            
+            // I: 研究型
+            { text: "觀察生活中的現象，並尋找背後的科學原理。", type: "I" },
+            { text: "喜歡閱讀科普文章或研究有興趣的專題。", type: "I" },
+            { text: "解決複雜的數學題目或邏輯推理遊戲。", type: "I" },
+            { text: "對未知的問題感到好奇，會主動上網查資料找答案。", type: "I" },
+            { text: "喜歡自然科學（如物理、化學、生物），熱衷於探討運作機制。", type: "I" },
+            { text: "參加科展或專題研究，花時間收集數據並分析結果。", type: "I" },
+            
+            // A: 藝術型
+            { text: "發揮創意進行畫畫、設計或影片剪輯等創作。", type: "A" },
+            { text: "欣賞音樂會、戲劇表演或去逛美術館。", type: "A" },
+            { text: "喜歡透過寫作、音樂或藝術來表達自己的想法。", type: "A" },
+            { text: "在社團或班級活動中，負責構思主題、設計海報或排版。", type: "A" },
+            { text: "不喜歡死板的規定，偏好有空間發揮個人風格的作業。", type: "A" },
+            { text: "關注流行文化、攝影、時尚或建築美學。", type: "A" },
+            
+            // S: 社交型
+            { text: "傾聽同學的煩惱，並主動安慰或幫助他們。", type: "S" },
+            { text: "教同學寫功課或分享自己新學到的知識。", type: "S" },
+            { text: "參與志工活動或在團體中幫助大家互相合作。", type: "S" },
+            { text: "喜歡參與小組討論，並擅長化解同學之間的爭執。", type: "S" },
+            { text: "對心理學或人類行為感興趣，想了解如何幫助別人成長。", type: "S" },
+            { text: "認識新朋友會讓你感到充滿能量，樂於與不同的人交流。", type: "S" },
+            
+            // E: 企業型
+            { text: "擔任社團幹部或小組長，帶領大家完成目標。", type: "E" },
+            { text: "發起新的活動計畫，並說服同學一起參與。", type: "E" },
+            { text: "喜歡參加比賽，追求好成績並享受競爭的感覺。", type: "E" },
+            { text: "關注商業新聞、創業故事或理財相關的資訊。", type: "E" },
+            { text: "在團隊中，習慣主動分配任務並監督進度。", type: "E" },
+            { text: "喜歡挑戰有難度的目標，並享受說服別人接受你的提案。", type: "E" },
+            
+            // C: 事務型
+            { text: "仔細整理筆記、歸檔考卷，把東西分類得整整齊齊。", type: "C" },
+            { text: "按照老師或學校的明確規定，一步一步完成任務。", type: "C" },
+            { text: "檢查作業或報告中的錯字，確保內容完全正確。", type: "C" },
+            { text: "擔任班級的總務股長，負責精準管理班費和記帳。", type: "C" },
+            { text: "喜歡有明確評分標準和格式要求的作業，勝過開放式的申論題。", type: "C" },
+            { text: "習慣使用行事曆或計畫表，把每天的行程和待辦事項安排好。", type: "C" }
+        ];
+
+        // 應用程式狀態
+        let currentQuestionIndex = 0;
+        let scores = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
+        let userAnswers = []; // 新增：紀錄使用者的每一題答案，以便返回上一題計算
+        let radarChartInstance = null;
+
+        // DOM 元素參考
+        const homeScreen = document.getElementById('home-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const resultScreen = document.getElementById('result-screen');
+        const questionText = document.getElementById('question-text');
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const progressPercentage = document.getElementById('progress-percentage');
+        const prevBtn = document.getElementById('prev-btn'); // 新增參考
+
+        function startQuiz() {
+            // 重置狀態
+            currentQuestionIndex = 0;
+            scores = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
+            userAnswers = []; // 重置作答紀錄
+            
+            // 隨機打亂題目順序 (Fisher-Yates Shuffle)
+            for (let i = questions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [questions[i], questions[j]] = [questions[j], questions[i]];
+            }
+
+            // 切換畫面
+            homeScreen.classList.add('hidden');
+            resultScreen.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+            
+            // 移除動畫類別以便重新觸發
+            quizScreen.classList.remove('fade-in');
+            void quizScreen.offsetWidth; // 觸發 reflow
+            quizScreen.classList.add('fade-in');
+
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            const currentQ = questions[currentQuestionIndex];
+            questionText.textContent = currentQ.text;
+            
+            // 更新進度
+            const currentStep = currentQuestionIndex + 1;
+            const totalSteps = questions.length;
+            const percentage = Math.round((currentStep / totalSteps) * 100);
+            
+            progressText.textContent = `第 ${currentStep} / ${totalSteps} 題`;
+            progressPercentage.textContent = `${percentage}%`;
+            progressBar.style.width = `${percentage}%`;
+
+            // 處理「上一題」按鈕的顯示狀態
+            if (currentQuestionIndex > 0) {
+                prevBtn.classList.remove('hidden');
+            } else {
+                prevBtn.classList.add('hidden');
+            }
+        }
+
+        function answer(points) {
+            // 記錄該題分數到歷史陣列中
+            const currentQ = questions[currentQuestionIndex];
+            userAnswers[currentQuestionIndex] = { type: currentQ.type, points: points };
+
+            currentQuestionIndex++;
+
+            if (currentQuestionIndex < questions.length) {
+                // 加入短暫淡出動畫效果
+                questionText.style.opacity = 0;
+                setTimeout(() => {
+                    renderQuestion();
+                    questionText.style.opacity = 1;
+                    questionText.style.transition = "opacity 0.3s ease";
+                }, 150);
+            } else {
+                showResults();
+            }
+        }
+
+        // 新增：返回上一題功能
+        function previousQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                
+                // 加入短暫淡出動畫效果
+                questionText.style.opacity = 0;
+                setTimeout(() => {
+                    renderQuestion();
+                    questionText.style.opacity = 1;
+                    questionText.style.transition = "opacity 0.3s ease";
+                }, 150);
+            }
+        }
+
+        function showResults() {
+            quizScreen.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+
+            // 重新計算總分 (基於 userAnswers 陣列，確保返回上一題修改後的邏輯正確)
+            scores = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
+            userAnswers.forEach(ans => {
+                if (ans) scores[ans.type] += ans.points;
+            });
+
+            // 1. 計算最高的三個維度
+            const sortedTraits = Object.keys(scores).sort((a, b) => scores[b] - scores[a]);
+            const top3 = sortedTraits.slice(0, 3);
+            const resultCodeStr = top3.join('');
+            
+            document.getElementById('result-code').textContent = resultCodeStr;
+
+            // 2. 渲染解析內容與科系推薦
+            const analysisContainer = document.getElementById('analysis-container');
+            const majorsContainer = document.getElementById('majors-container');
+            analysisContainer.innerHTML = '';
+            majorsContainer.innerHTML = '';
+            
+            top3.forEach((traitCode, index) => {
+                const trait = traitsInfo[traitCode];
+                const score = scores[traitCode];
+                
+                // 產生優勢解析卡片
+                const card = document.createElement('div');
+                card.className = `p-4 rounded-xl border-l-4 bg-white shadow-sm flex flex-col space-y-2`;
+                card.style.borderLeftColor = trait.color;
+                
+                let titlePrefix = index === 0 ? '👑 第一優勢' : (index === 1 ? '⭐ 第二優勢' : '💡 第三優勢');
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <h4 class="font-bold text-gray-800 text-lg">${titlePrefix}：${trait.name}</h4>
+                        <span class="text-sm font-semibold bg-gray-100 text-gray-600 px-2 py-1 rounded-full">${score} 分</span>
+                    </div>
+                    <p class="text-gray-600 text-sm leading-relaxed">${trait.desc}</p>
+                `;
+                analysisContainer.appendChild(card);
+
+                // 動態產生推薦科系卡片
+                const majorCard = document.createElement('div');
+                majorCard.className = `p-4 rounded-xl border bg-gray-50 flex flex-col h-full`;
+                majorCard.style.borderTopColor = trait.color;
+                majorCard.style.borderTopWidth = '4px';
+                
+                // 標籤樣式組合
+                const majorsList = majorsInfo[traitCode].map(m => 
+                    `<span class="inline-block bg-white border border-gray-200 text-gray-700 rounded px-2 py-1 m-1 text-sm shadow-sm">${m}</span>`
+                ).join('');
+                
+                majorCard.innerHTML = `
+                    <h4 class="font-bold text-gray-700 mb-3">${trait.name.split(' ')[0]} 推薦</h4>
+                    <div class="flex flex-wrap -m-1">
+                        ${majorsList}
+                    </div>
+                `;
+                majorsContainer.appendChild(majorCard);
+            });
+
+            // 3. 繪製雷達圖
+            drawRadarChart();
+        }
+
+        function drawRadarChart() {
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            
+            // 如果已有圖表則先銷毀
+            if (radarChartInstance) {
+                radarChartInstance.destroy();
+            }
+
+            // 按照 R, I, A, S, E, C 的順序排列數據
+            const labels = ['實用(R)', '研究(I)', '藝術(A)', '社交(S)', '企業(E)', '事務(C)'];
+            const dataPoints = [
+                scores.R, scores.I, scores.A, scores.S, scores.E, scores.C
+            ];
+
+            radarChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '能力特質分數',
+                        data: dataPoints,
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(0, 0, 0, 0.1)' },
+                            grid: { color: 'rgba(0, 0, 0, 0.1)' },
+                            pointLabels: {
+                                font: { size: 14, family: 'Inter', weight: 'bold' },
+                                color: '#4B5563'
+                            },
+                            ticks: {
+                                beginAtZero: true,
+                                max: 30, // 每題最高 5 分，6 題共 30 分
+                                stepSize: 5,
+                                display: false // 隱藏雷達圖內的數字
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` 分數: ${context.raw} / 30`; // 更新 tooltip 的滿分顯示
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function resetQuiz() {
+            homeScreen.classList.remove('hidden');
+            resultScreen.classList.add('hidden');
+            // 視窗滾動到頂部
+            window.scrollTo(0, 0);
+        }
+
+        // 下載結果圖片功能
+        function downloadResult() {
+            const btn = document.getElementById('download-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '圖片產生中...';
+            btn.disabled = true;
+
+            const exportArea = document.getElementById('export-area');
+            const resultScreen = document.getElementById('result-screen');
+            
+            // 暫時移除捲軸與高度限制，確保截圖不會被截斷
+            const originalHeight = resultScreen.style.height;
+            const originalOverflow = resultScreen.style.overflowY;
+            resultScreen.style.height = 'auto';
+            resultScreen.style.overflowY = 'visible';
+
+            // 使用 html2canvas 擷取畫面
+            html2canvas(exportArea, {
+                scale: 2, // 提高圖片解析度
+                backgroundColor: '#ffffff', // 確保背景為白色
+                useCORS: true // 允許跨域圖片
+            }).then(canvas => {
+                const resultCode = document.getElementById('result-code').textContent;
+                const link = document.createElement('a');
+                link.download = `霍蘭德測驗結果_${resultCode}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                
+                // 恢復原始樣式與按鈕狀態
+                resultScreen.style.height = originalHeight;
+                resultScreen.style.overflowY = originalOverflow;
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }).catch(err => {
+                console.error("生成圖片失敗:", err);
+                alert("生成圖片失敗，請稍後再試。");
+                resultScreen.style.height = originalHeight;
+                resultScreen.style.overflowY = originalOverflow;
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>
